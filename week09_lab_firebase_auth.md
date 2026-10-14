@@ -704,9 +704,49 @@ final pages = [
 
 > ✅ **Checkpoint 5.1** ถ่ายภาพหน้าจอ Home ที่แสดงสินค้าจากทั้งสองแหล่งข้อมูลปนกันอยู่ในลิสต์เดียว พร้อม Badge ที่แยกแหล่งที่มาชัดเจน (ถ้ายังไม่เคยมีประกาศจริงใน Firestore เลย ให้ทำส่วนที่ 6 ให้เสร็จก่อนแล้วย้อนกลับมาถ่ายภาพ Checkpoint นี้) อธิบายว่าการออกแบบให้ `HomePage` ไม่รู้จัก `ItemRepositoryApi`/`ItemRepositoryFirestore` โดยตรง แต่รู้จักผ่าน Interface `ItemRepository` เท่านั้น ช่วยให้ทดสอบหรือเปลี่ยนแหล่งข้อมูลในอนาคตง่ายขึ้นอย่างไร
 
-```text
-บันทึกรูปผลลัพธ์ที่นี่ และคำอธิบาย
+<img width="1917" height="1137" alt="image" src="https://github.com/user-attachments/assets/d74e384d-df06-40b6-bae7-aa8b1688754c" />
+
+การออกแบบให้ HomePage รู้จักแค่ Interface ItemRepository
+
+HomePage รับพารามิเตอร์เป็น List<ItemRepository> และเรียกแค่เมธอด getItems() ที่ Interface กำหนดไว้
+
+```dart
+Future<List<Item>> loadAllItems(List<ItemRepository> repositories) async {
+  final results = await Future.wait(
+    repositories.map((repo) => repo.getItems()),
+  );
+  return results.expand((list) => list).toList();
+}
 ```
+ในไฟล์ home_page.dart ไม่มีการ import หรือเรียก ItemRepositoryApi, ItemRepositoryFirestore, http หรือ FirebaseFirestore เลย การเลือกว่าจะใช้แหล่งข้อมูลไหนทำที่ main.dart จุดเดียว
+
+```dart
+itemRepositories: [ItemRepositoryApi(), ItemRepositoryFirestore()],
+```
+แม้แต่ Badge 🏪/🎓 ก็ดูจาก item.sellerId ที่อยู่ในข้อมูล ไม่ได้ตรวจว่ามาจาก Repository ตัวไหน
+
+1. ทดสอบง่ายขึ้น
+
+ตอนทดสอบ ส่ง Repository ปลอมที่ implements ItemRepository และคืนข้อมูลตายตัวเข้าไปแทนได้ เช่น _FakeItemRepository ใน widget_test.dart
+
+dart
+HomePage(repositories: [_FakeItemRepository()], ...)
+
+ข้อดีคือ
+
+- ไม่ต้องต่ออินเทอร์เน็ตหรือ Firebase จริง ทดสอบได้เร็วและได้ผลเหมือนเดิมทุกครั้ง (ตามที่พบในสัปดาห์ 7 ว่า widget test จะตอบ HTTP 400 ทุกคำขอ)
+- จำลองสถานการณ์ได้ตามต้องการ เช่น Repository ที่คืนลิสต์ว่าง เพื่อทดสอบข้อความ "ไม่พบสินค้า" หรือโยน Exception เพื่อทดสอบหน้าจอ error
+- ทดสอบการรวมหลายแหล่งได้ ส่ง Repository ปลอม 2 ตัวเข้าไป แล้วตรวจว่าหน้าจอแสดงสินค้าจากทั้งคู่
+
+2. เปลี่ยนหรือเพิ่มแหล่งข้อมูลในอนาคตง่ายขึ้น
+
+สัปดาห์นี้เป็นตัวอย่างจริง: เพิ่ม Firestore เป็นแหล่งข้อมูลที่ 2 โดยไม่แก้ Interface ItemRepository และไม่แก้โค้ดดึงข้อมูลใน HomePage แค่สร้าง ItemRepositoryFirestore implements ItemRepository แล้วเพิ่มเข้าไปในลิสต์ที่ main.dart
+
+ในอนาคตก็ทำแบบเดียวกันได้
+
+เปลี่ยน Fake Store API เป็น API อื่น: สร้างคลาสใหม่ที่ implements ItemRepository แล้วแก้ main.dart บรรทัดเดียว
+เพิ่มแหล่งที่ 3 (เช่น สินค้าที่แคชไว้ใน Drift): เพิ่มเข้าไปในลิสต์ HomePage ก็รวมผลให้อัตโนมัติผ่าน Future.wait()
+ย้ายฐานข้อมูลคลาวด์: แก้แค่ในคลาส Repository ตัวนั้น หน้าจอไม่ต้องรู้เลยว่าเบื้องหลังเปลี่ยน
 
 ---
 
@@ -756,15 +796,23 @@ final pages = [
 
 > ✅ **Checkpoint 6.1** โพสต์ขายจริงอย่างน้อย 2 รายการผ่านแอป ถ่ายภาพหน้าจอ Firebase Console เมนู Firestore Database ที่แสดง Collection `items` มีเอกสารที่โพสต์เข้ามาจริง พร้อม field `sellerId` ที่ตรงกับ `uid` ของบัญชีที่ใช้ทดสอบ และยืนยันว่าร่างทั้งสองรายการหายไปจาก `MyDraftsPage` แล้ว
 
-```text
-บันทึกรูปผลลัพธ์ที่นี่
-```
+## โพสต์ขายจริงอย่างน้อย 2 รายการผ่านแอป
+<img width="1917" height="1092" alt="image" src="https://github.com/user-attachments/assets/cbef1140-ae95-420f-a29f-8864ceda869c" />
+
+## ร่างทั้งสองรายการหายไปจาก `MyDraftsPage` แล้ว
+<img width="1917" height="1141" alt="image" src="https://github.com/user-attachments/assets/26ee0910-0907-4437-9b3b-d7ceef16e836" />
+
 
 > ✅ **Checkpoint 6.2** ถ่ายภาพหน้าจอ Firebase Console เมนู Storage ที่แสดงไฟล์รูปภาพที่อัปโหลดสำเร็จ และภาพหน้าจอ Firestore ที่แสดงว่าเอกสารมี field `imageUrl` เป็น URL จริงที่เปิดดูได้ ถ่ายภาพหน้าจอแอปที่แสดงรูปสินค้านั้นบนหน้า Home ผ่าน `Image.network(imageUrl)` ด้วย (ย้อนกลับไปถ่ายภาพ Checkpoint 5.1 ให้ครบตอนนี้ ถ้ายังไม่ได้ทำ)
 
-```text
-บันทึกรูปผลลัพธ์ที่นี่
-```
+## เมนู Storage ที่แสดงไฟล์รูปภาพที่อัปโหลดสำเร็จ
+<img width="1456" height="826" alt="image" src="https://github.com/user-attachments/assets/50538ef1-90b3-4ad3-81ed-2a18d1b037d2" />
+
+## แสดงว่าเอกสารมี field `imageUrl` เป็น URL จริงที่เปิดดูได้
+<img width="1912" height="1073" alt="image" src="https://github.com/user-attachments/assets/ffae4646-c026-4564-9418-89c2cc85374e" />
+
+## รูปสินค้านั้นบนหน้า Home
+<img width="1917" height="1137" alt="image" src="https://github.com/user-attachments/assets/d74e384d-df06-40b6-bae7-aa8b1688754c" />
 
 ---
 
