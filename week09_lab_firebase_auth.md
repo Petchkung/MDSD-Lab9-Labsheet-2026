@@ -564,10 +564,40 @@ Widget build(BuildContext context) {
 
 > ✅ **Checkpoint 4.1** ถ่ายภาพหน้าจอ 3 ภาพเรียงกัน คือ (ก) แอปตอนเพิ่งเปิดขึ้นมาครั้งแรกแบบยังไม่ล็อกอิน แสดงหน้า Login (ข) หลังล็อกอินสำเร็จ แอปสลับไปแสดง `MainScaffold` อัตโนมัติโดยไม่ต้องกดอะไรเพิ่ม และ (ค) หลังกด "ออกจากระบบ" แอปสลับกลับไปหน้า Login เอง อธิบายว่าทำไมการใช้ `StreamBuilder` ฟัง `authStateChanges()` จึงทำให้ไม่ต้องเขียนโค้ดสั่ง Navigate ไปมาเอง
 
+## แอปตอนเพิ่งเปิดขึ้นมาครั้งแรกแบบยังไม่ล็อกอิน แสดงหน้า Login
+<img width="1917" height="1135" alt="image" src="https://github.com/user-attachments/assets/c259a769-611e-485b-88c0-26deb5db7cdd" />
 
-```text
-บันทึกรูปผลลัพธ์ที่นี่ (3 ภาพ) และคำอธิบาย
+## หลังล็อกอินสำเร็จ แอปสลับไปแสดง `MainScaffold` อัตโนมัติโดยไม่ต้องกดอะไรเพิ่ม
+<img width="1917" height="1140" alt="image" src="https://github.com/user-attachments/assets/82a005d9-ccb9-43fe-bba1-da9c678a62da" />
+
+## หลังกด "ออกจากระบบ" แอปสลับกลับไปหน้า Login เอง
+<img width="1882" height="1136" alt="image" src="https://github.com/user-attachments/assets/a59f621c-f154-42e9-9d98-512abc44a0ca" />
+
+
+authStateChanges() เป็น Stream ที่ Firebase ยิงค่าใหม่ออกมาทุกครั้งที่สถานะล็อกอินเปลี่ยน โดยค่าที่ยิงออกมามี 2 แบบ
+
+- null = ยังไม่ล็อกอิน หรือเพิ่งออกจากระบบ
+- User = ล็อกอินอยู่
+
+AuthGate ใช้ StreamBuilder<User?> ฟัง Stream นี้ไว้ตลอดเวลา และ StreamBuilder จะเรียก builder ใหม่อัตโนมัติทุกครั้งที่ได้ค่าใหม่ แล้วเลือกว่าจะแสดงหน้าไหนจากค่าล่าสุด
+
+```dart
+if (snapshot.connectionState == ConnectionState.waiting) {
+  return const Scaffold(body: Center(child: CircularProgressIndicator()));
+}
+if (snapshot.data == null) {
+  return const LoginPage();      // ยังไม่ล็อกอิน
+}
+return MainScaffold(...);        // ล็อกอินแล้ว
 ```
+สิ่งที่เกิดขึ้นในแต่ละภาพ
+
+- (ก) เปิดแอป Firebase ตรวจว่าไม่มี Session ค้างอยู่ จึงยิง null → builder แสดง LoginPage
+- (ข) กดเข้าสู่ระบบ signIn() สำเร็จ Firebase ยิงค่า User → builder ทำงานใหม่แล้วแสดง MainScaffold
+- (ค) กดออกจากระบบ signOut() ทำให้ Firebase ยิง null → builder แสดง LoginPage อีกครั้ง
+
+สรุป
+หน้าจอที่แสดงจึงผูกกับ "สถานะล็อกอินปัจจุบัน" โดยตรง แทนที่จะผูกกับ "ปุ่มที่ผู้ใช้กด" LoginPage และ HomePage มีหน้าที่แค่เรียก signIn() หรือ signOut() ส่วนการตัดสินใจว่าจะแสดงหน้าไหนเป็นหน้าที่ของ AuthGate จุดเดียว จึงไม่ต้องเขียน Navigator.push หรือ Navigator.pop สลับหน้าไปมาเอง
 
 ---
 
