@@ -608,10 +608,31 @@ return MainScaffold(...);        // ล็อกอินแล้ว
 ก่อนเขียนโค้ด ให้ตอบคำถามต่อไปนี้ (อ้างอิง `campus_marketplace_lab_roadmap.md` ข้อ 5.6 และเนื้อหาหัวข้อ 9.5):
 
 1. ทำไมเราจึง "เพิ่ม Implementation ใหม่" (`ItemRepositoryFirestore`) แทนที่จะแก้ไข `ItemRepositoryApi` เดิม หรือเขียนโค้ดเรียก Firestore ตรงจาก `HomePage`?
+```text
+ตามหัวข้อ 9.6 หลักสำคัญของสัปดาห์นี้คือ ไม่แตะ Interface ItemRepository เดิม และไม่แตะ Widget ฝั่ง UI เลย เพียงเพิ่ม Implementation ใหม่เข้าไปอีกตัว
+
+ไม่แก้ ItemRepositoryApi เดิม เพราะ Fake Store API กับ Firestore เป็นแหล่งข้อมูลคนละแหล่งที่ต้องใช้พร้อมกัน ถ้ารวมไว้ในคลาสเดียว คลาสจะมีหน้าที่ปนกัน และการแก้ส่วนหนึ่งอาจทำให้ส่วนที่ทำงานได้แล้วพังไปด้วย เมื่อแยกเป็น ItemRepositoryFirestore implements ItemRepository คลาสนี้ "สัญญา" ว่ามี getItems() ครบตาม Interface ทุกที่ที่รับ ItemRepository (เช่น HomePage) จึงรับคลาสใหม่นี้ได้ทันทีโดยไม่ต้องแก้โค้ด
+
+ไม่เรียก Firestore ตรงจาก HomePage เพราะ Widget จะรู้จัก FirebaseFirestore โดยตรง ทำให้ทดสอบยาก และถ้าวันหนึ่งเปลี่ยนแหล่งข้อมูล ต้องไล่แก้ทุกหน้าที่เรียก เมื่อเรียกผ่าน Repository แก้แค่ในคลาส Repository จุดเดียว หน้าจอไม่ต้องรู้เลยว่าเบื้องหลังเปลี่ยนไปใช้อะไร
+
+ผลที่ได้คือ HomePage รับ Repository หลายตัวพร้อมกันได้ แล้วใช้ Future.wait() เรียก getItems() ของทุกแหล่งพร้อมกัน จากนั้นใช้ .expand() รวมผลเป็น List เดียว โดยไม่ต้องรู้ว่าแต่ละตัวดึงข้อมูลจากไหน
+
+เปรียบเหมือนปลั๊กไฟมาตรฐาน ItemRepository คือ "เต้ารับ" ที่ HomePage เสียบใช้งาน ส่วน ItemRepositoryApi และ ItemRepositoryFirestore คือ "เครื่องใช้ไฟฟ้า" คนละชนิดที่เสียบปลั๊กแบบเดียวกันได้ เพิ่มเครื่องใหม่ก็ไม่ต้องเปลี่ยนเต้ารับ
+```
+
 2. ถ้าในอนาคตอาจารย์สั่งให้เปลี่ยนจาก Fake Store API ไปใช้ API อื่น ต้องแก้ไฟล์กี่ไฟล์ ถ้าทุก Widget เรียกผ่าน Interface `ItemRepository` เท่านั้น?
 
 ```text
-บันทึกคำตอบของคุณที่นี่
+ถ้าทุก Widget เรียกผ่าน Interface ItemRepository เท่านั้น แก้แค่ 2 จุด และไม่ต้องแก้ Widget เลย
+
+1. สร้างไฟล์ Repository ใหม่ 1 ไฟล์ เช่น class ItemRepositoryNewApi implements ItemRepository ที่เขียน getItems() เรียก API ใหม่ แล้วแปลงผลเป็น List<Item>
+2. แก้ main.dart 1 บรรทัด เปลี่ยน ItemRepositoryApi() ในลิสต์ itemRepositories เป็น ItemRepositoryNewApi()
+
+(หรือแก้ไส้ในของ ItemRepositoryApi ตรง ๆ ก็เหลือแก้แค่ไฟล์เดียว)
+
+HomePage, MainScaffold, AuthGate ไม่ต้องแก้ เพราะยังเรียก getItems() และได้ List<Item> เหมือนเดิม ตรงกับที่หัวข้อ 9.6 สรุปว่า Repository Pattern "เปิดทางให้อนาคตเพิ่มแหล่งข้อมูลใหม่ได้อีกโดยไม่ต้องรื้อโครงสร้างเดิม"
+
+ข้อยกเว้นคือ ถ้า JSON ของ API ใหม่ใช้ชื่อ field ต่างไป อาจต้องเพิ่มการแปลงข้อมูลในคลาส Repository ใหม่หรือใน item.dart แต่ก็ยังอยู่ในชั้นข้อมูล ไม่ลามไปถึง UI
 ```
 
 ### ขั้นตอนที่ 5.2: **นักศึกษาเขียน Code เอง** — ItemRepositoryFirestore
