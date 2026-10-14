@@ -843,9 +843,19 @@ service cloud.firestore {
 
 > ✅ **Checkpoint 7.1 (Self-Study)** ถ่ายภาพหน้าจอผลการทดลองทั้ง 2 กรณีใน Rules Playground เขียนอธิบายสั้น ๆ ว่าทำไม Client-side Validation (การไม่แสดงปุ่มแก้ไขให้เห็น) เพียงอย่างเดียวจึงไม่เพียงพอต่อความปลอดภัยของข้อมูลจริง
 
-```text
-บันทึกรูปผลลัพธ์ที่นี่ และคำอธิบาย
-```
+<img width="1917" height="1026" alt="image" src="https://github.com/user-attachments/assets/1763f7f8-3ca4-4dfb-ba0b-dbb1d4dd8591" />
+<img width="1498" height="812" alt="image" src="https://github.com/user-attachments/assets/2cdfeaa8-b914-4d35-8283-7a71f8261b69" />
+
+ทำไม Client-side Validation อย่างเดียวไม่เพียงพอ
+
+การไม่แสดงปุ่มแก้ไขหรือลบในแอป เป็นแค่การซ่อนทางเข้าบนหน้าจอ ไม่ได้ปิดทางเข้าจริงที่ฐานข้อมูล เพราะ
+
+1. ใครก็เรียก Firestore ได้โดยไม่ผ่านแอปของเรา ค่าใน firebase_options.dart (เช่น projectId, apiKey) ฝังอยู่ในแอปที่ใครก็ดาวน์โหลดได้ ผู้ที่รู้ค่านี้เขียนโค้ดหรือสคริปต์ของตัวเองเรียก update() หรือ delete() กับประกาศของคนอื่นได้ตรง ๆ
+2. แอปถูกดัดแปลงได้ เช่น แก้โค้ดให้ปุ่มที่ซ่อนไว้กลับมาแสดง หรือแก้ค่า sellerId ก่อนส่ง
+
+Security Rules ตรวจทุกคำขอที่ฝั่งเซิร์ฟเวอร์ของ Firebase ไม่ว่าคำขอนั้นจะมาจากแอปของเราหรือจากที่อื่น และใช้ request.auth.uid ที่ Firebase ยืนยันเองจาก Token ซึ่งปลอมแปลงไม่ได้ ผลใน Rules Playground ยืนยันว่า แม้ผู้ใช้คนอื่นจะส่งคำขอแก้ไขมาได้ ก็ยังถูกปฏิเสธ เพราะ UID ไม่ตรงกับ sellerId ของประกาศ
+
+Client-side Validation จึงมีไว้เพื่อประสบการณ์ผู้ใช้ (ไม่ให้เห็นปุ่มที่กดแล้วจะ error) ส่วนความปลอดภัยจริงต้องอาศัย Security Rules
 
 ---
 
