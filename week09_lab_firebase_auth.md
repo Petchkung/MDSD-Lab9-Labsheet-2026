@@ -163,9 +163,48 @@ Future<void> main() async {
 
 > ✅ **Checkpoint 2.1** ทดสอบสมัครสมาชิกด้วย Email ใหม่สำเร็จ ถ่ายภาพหน้าจอ Firebase Console เมนู Authentication → Users ที่แสดงบัญชีที่เพิ่งสมัคร จากนั้นทดสอบกรณีผิดพลาด 2 กรณี คือ (ก) สมัครซ้ำด้วย Email เดิม และ (ข) ใส่รหัสผ่านสั้นเกินไป ถ่ายภาพหน้าจอข้อความ Error ทั้งสองกรณี พร้อมอธิบายว่าโค้ดส่วนใดใน `auth_service.dart` เป็นตัวจัดการแต่ละกรณี
 
-```text
-บันทึกรูปผลลัพธ์ที่นี่ และคำอธิบายของแต่ละกรณี
+## ทดสอบสมัครสมาชิกด้วย Email ใหม่สำเร็จ ถ่ายภาพหน้าจอ Firebase Console เมนู Authentication → Users ที่แสดงบัญชีที่เพิ่งสมัคร
+<img width="1917" height="1082" alt="image" src="https://github.com/user-attachments/assets/b6029d07-ad45-4e70-9f31-069b6ac558d9" />
+
+## สมัครซ้ำด้วย Email เดิม
+<img width="1912" height="1133" alt="image" src="https://github.com/user-attachments/assets/84e3ed33-3554-4fcc-a76b-a82692b23903" />
+
+## ใส่รหัสผ่านสั้นเกินไป
+<img width="1917" height="1138" alt="image" src="https://github.com/user-attachments/assets/b9b08790-865d-4c8b-a9dc-5afbad0281f5" />
+
+โค้ดที่จัดการทั้ง 2 กรณีใน auth_service.dart
+
+ทั้ง 2 กรณีเกิดตอนกดสมัครสมาชิก จึงผ่านเมธอด signUp() เหมือนกัน
+```dart
+Future<void> signUp({required String email, required String password}) async {
+  try {
+    await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+  } on FirebaseAuthException catch (e) {
+    throw Exception(_mapErrorMessage(e.code));
+  }
+}
 ```
+1. createUserWithEmailAndPassword() ส่งอีเมลและรหัสผ่านไปให้ Firebase สร้างบัญชี
+2. ถ้าสร้างไม่สำเร็จ Firebase จะโยน FirebaseAuthException ออกมา พร้อมแนบ e.code ที่บอกสาเหตุ
+3. on FirebaseAuthException catch (e) ดักจับ Exception ชนิดนี้ไว้ ไม่ให้ Error ดิบหลุดไปถึงหน้าจอ
+4. ส่ง e.code ไปให้ _mapErrorMessage() แปลเป็นภาษาไทย แล้วโยนเป็น Exception ใหม่ให้ LoginPage แสดงในกล่องสีแดง
+
+กรณี (ก) สมัครซ้ำด้วยอีเมลเดิม
+Firebase พบว่ามีบัญชีที่ใช้อีเมลนี้แล้ว จึงส่ง code email-already-in-use ซึ่งตรงกับเคสนี้ใน _mapErrorMessage()
+```dart
+case 'email-already-in-use':
+  return 'อีเมลนี้ถูกใช้สมัครสมาชิกไปแล้ว';
+```
+กรณี (ข) รหัสผ่านสั้นเกินไป
+Firebase กำหนดรหัสผ่านขั้นต่ำ 6 ตัวอักษร เมื่อใส่ 123 จึงส่ง code weak-password ซึ่งตรงกับเคสนี้
+```dart
+case 'weak-password':
+  return 'รหัสผ่านสั้นเกินไป ต้องมีอย่างน้อย 6 ตัวอักษร';
+```
+สรุป การตรวจทั้ง 2 กรณีเกิดขึ้นที่ฝั่ง Firebase ส่วน auth_service.dart ทำหน้าที่ดักจับ FirebaseAuthException และแปล e.code เป็นข้อความที่ผู้ใช้เข้าใจผ่าน _mapErrorMessage() จากนั้น LoginPage ใช้ e.toString().replaceFirst('Exception: ', '') ตัดคำนำหน้าออกก่อนแสดงผล ผู้ใช้จึงเห็นแค่ข้อความภาษาไทย ไม่เห็นข้อความแบบ [firebase_auth/weak-password] Password should be at least 6 characters
 
 ---
 
